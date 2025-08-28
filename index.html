@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student DB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./fonts/fa/css/all.min.css">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 py-4 px-6 flex justify-between items-center">
+        <h1 class="text-2xl font-semibold text-white">Student DB</h1>
+        <div class="flex items-center space-x-4">
+            <!-- Search Box -->
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="Search students..."
+                    class="bg-gray-700 text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+            <!-- Add Student Button -->
+            <button id="addStudentBtn"
+                class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Student List -->
+        <div class="bg-gray-800 rounded-xl overflow-hidden">
+            <div class="grid grid-cols-12 bg-gray-700 py-3 px-6 text-gray-300 font-semibold">
+                <div class="col-span-1"></div>
+                <div class="col-span-4">Name</div>
+                <div class="col-span-3">Course</div>
+                <div class="col-span-2">Phone</div>
+                <div class="col-span-2">Email</div>
+            </div>
+            <div id="studentsContainer" class="divide-y divide-gray-700">
+                <!-- Students will be loaded here dynamically -->
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="text-center py-12">
+            <i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i>
+            <p class="mt-4 text-gray-400">Loading students...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-12">
+            <i class="fas fa-user-graduate text-4xl text-gray-600"></i>
+            <p class="mt-4 text-gray-400">No students found</p>
+            <button id="addFirstStudent" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                Add Your First Student
+            </button>
+        </div>
+    </main>
+
+    <!-- Student Detail Modal -->
+    <div id="studentModal"
+        class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden modal">
+        <div class="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold">Student Details</h2>
+                    <button id="closeModal" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="studentDetails" class="space-y-6">
+                    <!-- Student details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Student Modal -->
+    <div id="editModal"
+        class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden modal">
+        <div class="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold">Edit Student</h2>
+                    <button id="closeEditModal" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="editForm" class="space-y-4">
+                    <input type="hidden" id="editId" name="id">
+
+                    <!-- Name -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-300 font-medium mb-1">Name</label>
+                            <input type="text" id="editName" name="name" required
+                                class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 font-medium mb-1">Father's Name</label>
+                            <input type="text" id="editFatherName" name="father_name"
+                                class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-gray-300 font-medium mb-1">Email</label>
+                        <input type="email" id="editEmail" name="email" required
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-300 font-medium mb-1">Phone</label>
+                            <input type="tel" id="editPhone" name="phone" required
+                                class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 font-medium mb-1">Phone 2</label>
+                            <input type="tel" id="editPhone2" name="phone2"
+                                class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                        </div>
+                    </div>
+
+                    <!-- Emergency -->                    
+                    <div>
+                        <label class="block text-gray-300 font-medium mb-1">Emergency Contact</label>
+                        <input type="tel" id="editEmergencyContact" name="emergency_contact"
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    
+                    <!-- D.O.B -->
+                    <div>
+                        <label class="block text-gray-300 font-medium mb-1">Date of Birth</label>
+                        <input type="date" id="editDob" name="dob" required
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                    </div>
+                   
+                    <!-- Addr -->
+                    <div>
+                        <label class="block text-gray-300 font-medium mb-1">Address</label>
+                        <textarea id="editAddress" name="address" rows="3"
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400"></textarea>
+                    </div>
+
+                    <!-- Gender -->
+                    <div>
+                        <label class="block text-gray-300 font-medium mb-1">Gender</label>
+                        <select id="editGender" name="gender" required
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                            <option value="">Select gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Course -->
+                    <div>
+                        <label class="block text-gray-300 font-medium mb-1">Course</label>
+                        <select id="editCourse" name="course" required
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
+                            <option value="">Select a course</option>
+                            <option value="science">Science</option>
+                            <option value="commerce">Commerce</option>
+                            <option value="arts">Arts</option>
+                            <option value="it">Information Technology</option>
+                        </select>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancelEdit"
+                            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg">
+                            Update Student
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="addModal"
+        class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden modal">
+        <div class="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold">Add New Student</h2>
+                    <button id="closeAddModal" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="addForm" class="space-y-4">
+                    <!-- Student form fields will be loaded here -->
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/script.js"></script>
+</body>
+
+</html>
