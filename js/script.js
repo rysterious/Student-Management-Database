@@ -316,22 +316,45 @@ async function handleAddSubmit(e) {
 
         const result = await res.json();
         
-        if (confirm("Student registered successfully!\n\nWould you like to add another student?")) {
-            formElement.reset();
-            // Reset preview image
-            const preview = document.getElementById("addPreview");
-            const label = document.getElementById("addUploadLabel");
-            if (preview) {
-                preview.src = "";
-                preview.classList.add("hidden");
-            }
-            if (label) {
-                label.classList.remove("hidden");
-            }
-        } else {
-            hideModal();
-            fetchStudents(); // Refresh the list
+        // if (confirm("Student registered successfully!\n\nWould you like to add another student?")) {
+        //     formElement.reset();
+        //     // Reset preview image
+        //     const preview = document.getElementById("addPreview");
+        //     const label = document.getElementById("addUploadLabel");
+        //     if (preview) {
+        //         preview.src = "";
+        //         preview.classList.add("hidden");
+        //     }
+        //     if (label) {
+        //         label.classList.remove("hidden");
+        //     }
+        // } else {
+        //     hideModal();
+        //     fetchStudents(); // Refresh the list
+        // }
+
+        // Show simple success message
+        alert("Student added successfully!");
+
+        // Reset the form for next use
+        formElement.reset();
+
+        // Reset image preview
+        const preview = document.getElementById("addPreview");
+        const label = document.getElementById("addUploadLabel");
+        if (preview) {
+            preview.src = "";
+            preview.classList.add("hidden");
         }
+        if (label) {
+            label.classList.remove("hidden");
+        }
+
+        // Close the modal
+        hideModal();
+
+        // Refresh the student list to show the new student
+        fetchStudents();
 
     } catch (err) {
         console.error(err);
