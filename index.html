@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <!-- Local Font Awesome -->
+  <link rel="stylesheet" href="fonts/fa/css/all.min.css">
+
+  <style>
+    @font-face {
+      font-family: 'Poppins';
+      src: url('fonts/Poppins-Regular.ttf') format('truetype');
+      font-weight: normal;
+    }
+    @font-face {
+      font-family: 'Poppins';
+      src: url('fonts/Poppins-SemiBold.ttf') format('truetype');
+      font-weight: 600;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #121212;
+      font-family: "Poppins", sans-serif;
+      color: #fff;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-bottom: 50px;
+      color: #e0e0e0;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 40px;
+      width: 80%;
+      max-width: 500px;
+    }
+
+    .card {
+      background: #1e1e1e;
+      height: 200px;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .card i {
+      font-size: 3.5rem;
+      transition: opacity 0.3s ease;
+    }
+
+    .card span {
+      position: absolute;
+      opacity: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover i {
+      opacity: 0.2;
+    }
+
+    .card:hover span {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <h1>JudgeCourtMore Youth Computer Training Center</h1>
+  <div class="dashboard">
+    <a href="studentdb.html" class="card" target="_blank">
+      <i class="fas fa-user-graduate"></i>
+      <span>Student DB</span>
+    </a>
+    <a href="fees.html" class="card" target="_blank">
+      <i class="fas fa-file-invoice-dollar"></i>
+      <span>Fees Registry</span>
+    </a>
+  </div>
+</body>
+</html>
