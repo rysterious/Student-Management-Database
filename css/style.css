@@ -51,3 +51,9 @@ body {
 .back-button:hover {
     transform: translateX(-3px);
 }
+
+/* Highlight when a student item is selected via keyboard */
+.student-selected {
+    outline: 2px solid rgba(59,130,246,0.6); /* blue-500 */
+    background-color: #1f2937 !important; /* slightly lighter */
+}
