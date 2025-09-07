@@ -63,6 +63,7 @@ def submit():
             "dob": request.form.get("dob"),
             "address": request.form.get("address"),
             "course": request.form.get("course"),
+            "session": request.form.get("session"),
         }
 
         # Handle file upload
@@ -189,10 +190,10 @@ def get_fees_unpaid():
     response = supabase.table("fees_unpaid").select("*").execute()
     return jsonify(response.data)
 
-@app.route("/fees/paid", methods=["GET"])
-def get_fees_paid():
-    response = supabase.table("fees_paid").select("*").execute()
-    return jsonify(response.data)
+# @app.route("/fees/paid", methods=["GET"])
+# def get_fees_paid():
+#     response = supabase.table("fees_paid").select("*").execute()
+#     return jsonify(response.data)
 
 @app.route("/fees/overdue", methods=["GET"])
 def get_fees_overdue():
@@ -415,6 +416,117 @@ def add_fee_entry():
         else:
             return jsonify({"error": "Invalid status"}), 400
 
+        if hasattr(response, 'error') and response.error: # type: ignore
+            return jsonify({"error": str(response.error)}), 500 # type: ignore
+            
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/fees/paid", methods=["GET"])
+def get_fees_paid():
+    """Get all paid fees with proper sorting"""
+    try:
+        # Get all paid fees
+        response = supabase.table("fees_paid").select("*").execute()
+        paid_fees = response.data
+        
+        # Sort by date descending (most recent first)
+        paid_fees.sort(key=lambda x: x.get('date', ''), reverse=True)
+        
+        return jsonify(paid_fees)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/fees/history/<student_id>", methods=["GET"])
+def get_payment_history(student_id):
+    """Get payment history for a specific student"""
+    try:
+        # Get all payments for the student from all tables
+        paid = supabase.table("fees_paid").select("*").eq("student_id", student_id).execute().data
+        unpaid = supabase.table("fees_unpaid").select("*").eq("student_id", student_id).execute().data
+        overdue = supabase.table("fees_overdue").select("*").eq("student_id", student_id).execute().data
+        
+        # Combine all payments
+        history = []
+        
+        # Add paid payments
+        for payment in paid:
+            history.append({
+                "payment_id": payment.get("id"),
+                "student_id": payment.get("student_id"),
+                "name": payment.get("name"),
+                "amount": payment.get("amount"),
+                "date": payment.get("date"),
+                "type": "paid"
+            })
+        
+        # Add unpaid payments
+        for payment in unpaid:
+            history.append({
+                "payment_id": payment.get("id"),
+                "student_id": payment.get("student_id"),
+                "name": payment.get("name"),
+                "amount": payment.get("amount"),
+                "date": None,
+                "type": "unpaid"
+            })
+        
+        # Add overdue payments
+        for payment in overdue:
+            history.append({
+                "payment_id": payment.get("id"),
+                "student_id": payment.get("student_id"),
+                "name": payment.get("name"),
+                "amount": payment.get("amount"),
+                "date": None,
+                "type": "overdue"
+            })
+        
+        # Sort by date (most recent first)
+        history.sort(key=lambda x: x.get('date', ''), reverse=True)
+        
+        return jsonify(history)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/fees/update/<payment_id>", methods=["PUT"])
+def update_payment(payment_id):
+    """Update a payment record"""
+    try:
+        data = request.get_json()
+        amount = data.get("amount")
+        date = data.get("date")
+        
+        # Get the existing payment
+        payment_response = supabase.table("fees_paid").select("*").eq("id", payment_id).execute()
+        if not payment_response.data:
+            return jsonify({"error": "Payment not found"}), 404
+            
+        payment = payment_response.data[0]
+        
+        # Update the payment
+        response = supabase.table("fees_paid").update({
+            "amount": amount,
+            "date": date
+        }).eq("id", payment_id).execute()
+        
+        if hasattr(response, 'error') and response.error: # type: ignore
+            return jsonify({"error": str(response.error)}), 500 # type: ignore
+            
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/fees/delete/<payment_id>", methods=["DELETE"])
+def delete_payment(payment_id):
+    """Delete a payment record"""
+    try:
+        # Delete the payment
+        response = supabase.table("fees_paid").delete().eq("id", payment_id).execute()
+        
         if hasattr(response, 'error') and response.error: # type: ignore
             return jsonify({"error": str(response.error)}), 500 # type: ignore
             
