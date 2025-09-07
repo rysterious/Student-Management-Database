@@ -1,3 +1,5 @@
+// === Complete JavaScript Code for Fees Management ===
+
 const API_BASE = 'http://localhost:5000';
 
 const feesContainer = document.getElementById('feesContainer');
@@ -11,10 +13,12 @@ const historyModal = document.getElementById('historyModal');
 const closeHistory = document.getElementById('closeHistory');
 const historyContent = document.getElementById('historyContent');
 const suggestionBox = document.getElementById('suggestionBox');
+const historyDate = document.getElementById('historyDate'); // Add this line
 
 let allFees = [];
 let allStudents = [];
 let suggestionIndex = -1;
+let currentStudentId = '';
 
 // =====================
 // Fetch + Render
@@ -23,6 +27,25 @@ async function fetchAllFees() {
   try {
     const res = await fetch(`${API_BASE}/fees/all`);
     allFees = await res.json();
+    
+    // For each student, get their payment history to find the most recent amount
+    for (let fee of allFees) {
+      if (fee.student_id) {
+        try {
+          const historyRes = await fetch(`${API_BASE}/fees/history/${fee.student_id}`);
+          const history = await historyRes.json();
+          
+          if (history.length > 0) {
+            // Sort by date to get the most recent payment
+            history.sort((a, b) => new Date(b.date) - new Date(a.date));
+            fee.amount = history[0].amount; // Set to most recent payment amount
+          }
+        } catch (err) {
+          console.error(`Failed to load history for student ${fee.student_id}:`, err);
+        }
+      }
+    }
+    
     renderFees(allFees);
   } catch (err) {
     console.error('Failed to load fees:', err);
@@ -33,8 +56,15 @@ async function fetchStudents() {
   try {
     const res = await fetch(`${API_BASE}/students`);
     allStudents = await res.json();
+    // Store in localStorage for persistence
+    localStorage.setItem('allStudents', JSON.stringify(allStudents));
   } catch (err) {
     console.error('Failed to load students:', err);
+    // Try to get from localStorage if API fails
+    const storedStudents = localStorage.getItem('allStudents');
+    if (storedStudents) {
+      allStudents = JSON.parse(storedStudents);
+    }
   }
 }
 
@@ -65,6 +95,46 @@ function renderFees(fees) {
 // =====================
 async function markPaid(student_id, amount) {
   try {
+    // Get student's payment history
+    const paidRes = await fetch(`${API_BASE}/fees/paid`);
+    const paidFees = await paidRes.json();
+    const studentHistory = paidFees.filter(f => f.student_id === student_id);
+    
+    // If no history, open add fee modal with student name pre-filled
+    if (studentHistory.length === 0) {
+      addFeeModal.classList.remove('hidden');
+      const studentIdInput = addFeeForm.querySelector('input[name="student_id"]');
+      if (studentIdInput) {
+        const student = allStudents.find(s => s.student_id === student_id);
+        if (student) {
+          studentIdInput.value = `${student.name}: ${student.student_id}`;
+        }
+      }
+      const statusSelect = addFeeForm.querySelector('select[name="status"]');
+      if (statusSelect) {
+        statusSelect.value = "paid";
+      }
+      const amountInput = addFeeForm.querySelector('input[name="amount"]');
+      if (amountInput) {
+        amountInput.value = amount;
+      }
+      
+      // Set today's date in the date field
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
+      
+      const dateInput = addFeeForm.querySelector('input[name="date"]');
+      if (dateInput) {
+        dateInput.value = today;
+      }
+      
+      return;
+    }
+    
+    // If they have history, proceed with marking as paid (creates new payment)
     const response = await fetch(`${API_BASE}/fees/pay`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -85,11 +155,11 @@ async function markPaid(student_id, amount) {
 }
 
 async function viewHistory(student_id) {
+  currentStudentId = student_id;
   try {
-    const paid = await (await fetch(`${API_BASE}/fees/paid`)).json();
-    const filtered = paid.filter(f => f.student_id === student_id);
-
-    if (filtered.length === 0) {
+    const paid = await (await fetch(`${API_BASE}/fees/history/${student_id}`)).json();
+    
+    if (paid.length === 0) {
       // Open add fee modal if no history
       addFeeModal.classList.remove('hidden');
       const studentIdInput = addFeeForm.querySelector('input[name="student_id"]');
@@ -99,19 +169,102 @@ async function viewHistory(student_id) {
           studentIdInput.value = `${student.name}: ${student.student_id}`;
         }
       }
+      const statusSelect = addFeeForm.querySelector('select[name="status"]');
+      if (statusSelect) {
+        statusSelect.value = "paid";
+      }
       return;
     }
 
-    historyContent.innerHTML = filtered.map(f => `
-      <div class="bg-gray-700 p-3 rounded">
-        <p><strong>Date:</strong> ${f.date || 'N/A'}</p>
-        <p><strong>Amount:</strong> ${f.amount}</p>
-      </div>
-    `).join('');
-
+    renderHistoryContent(paid);
     historyModal.classList.remove('hidden');
   } catch (err) {
     console.error('Failed to load history:', err);
+    alert('Failed to load history: ' + err.message);
+  }
+}
+
+function renderHistoryContent(filtered) {
+  historyContent.innerHTML = '';
+  
+  if (filtered.length === 0) {
+    historyContent.innerHTML = '<p class="text-gray-400">No payment history found.</p>';
+    return;
+  }
+
+  // Sort by date (newest first)
+  filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  filtered.forEach((f, index) => {
+    const historyItem = document.createElement('div');
+    historyItem.className = "bg-gray-700 p-3 rounded relative";
+    historyItem.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <p><strong>Date:</strong> ${f.date || 'N/A'}</p>
+          <p><strong>Amount:</strong> ${f.amount}</p>
+        </div>
+        <div class="flex space-x-2">
+          <button onclick="editPayment('${f.payment_id}', '${f.amount}', '${f.date}')" class="px-2 py-1 bg-yellow-600 text-white rounded text-sm">Edit</button>
+          <button onclick="deletePayment('${f.payment_id}')" class="px-2 py-1 bg-red-600 text-white rounded text-sm">Delete</button>
+        </div>
+      </div>
+    `;
+    historyContent.appendChild(historyItem);
+  });
+}
+
+async function editPayment(payment_id, amount, date) {
+  try {
+    const response = await fetch(`${API_BASE}/fees/update/${payment_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: parseFloat(amount),
+        date: date
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to update payment');
+    }
+    
+    alert('Payment updated successfully!');
+    // Refresh history
+    viewHistory(currentStudentId);
+    // Refresh fees list
+    fetchAllFees();
+  } catch (err) {
+    console.error('Failed to update payment:', err);
+    alert('Failed to update payment: ' + err.message);
+  }
+}
+
+async function deletePayment(payment_id) {
+  if (!confirm('Are you sure you want to delete this payment?')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/fees/delete/${payment_id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to delete payment');
+    }
+    
+    alert('Payment deleted successfully!');
+    // Refresh history
+    viewHistory(currentStudentId);
+    // Refresh fees list
+    fetchAllFees();
+  } catch (err) {
+    console.error('Failed to delete payment:', err);
+    alert('Failed to delete payment: ' + err.message);
   }
 }
 
@@ -138,7 +291,13 @@ feesSearch.addEventListener('input', e => {
 // Add Fee Modal
 // =====================
 addFeeBtn?.addEventListener('click', () => {
-  const today = new Date().toISOString().split('T')[0];
+  // Set today's date correctly using browser's local time
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const today = `${year}-${month}-${day}`;
+  
   const dateInput = addFeeForm.querySelector('input[name="date"]');
   if (dateInput) dateInput.value = today;
 
@@ -151,6 +310,8 @@ addFeeBtn?.addEventListener('click', () => {
 cancelAddFee?.addEventListener('click', () => {
   addFeeModal.classList.add('hidden');
   suggestionBox.classList.add('hidden');
+  // Clear the form when closing
+  addFeeForm.reset();
 });
 
 addFeeForm?.addEventListener('submit', async e => {
@@ -161,8 +322,12 @@ addFeeForm?.addEventListener('submit', async e => {
   // Extract student_id from the input (format: name: student_id)
   const inputValue = data.student_id;
   const colonIndex = inputValue.lastIndexOf(':');
+  let student_id, student_name;
+  
   if (colonIndex !== -1) {
-    data.student_id = inputValue.substring(colonIndex + 1).trim();
+    student_name = inputValue.substring(0, colonIndex).trim();
+    student_id = inputValue.substring(colonIndex + 1).trim();
+    data.student_id = student_id;
   }
   
   try {
@@ -177,9 +342,18 @@ addFeeForm?.addEventListener('submit', async e => {
       throw new Error(errorData.error || 'Failed to add fee');
     }
     
+    // Update the UI immediately with the new amount
+    if (student_id && data.amount) {
+      const feeIndex = allFees.findIndex(f => f.student_id === student_id);
+      if (feeIndex !== -1) {
+        allFees[feeIndex].amount = parseFloat(data.amount);
+        allFees[feeIndex].status = data.status || "paid";
+        renderFees(allFees);
+      }
+    }
+    
     addFeeModal.classList.add('hidden');
     addFeeForm.reset();
-    fetchAllFees();
     alert('Fee added successfully!');
   } catch (err) {
     console.error('Failed to add fee:', err);
@@ -296,9 +470,35 @@ function setupNameAutocomplete() {
 }
 
 // =====================
+// Date filtering for history
+// =====================
+historyDate?.addEventListener('change', async () => {
+  const selectedMonth = historyDate.value;
+  if (!selectedMonth) {
+    viewHistory(currentStudentId);
+    return;
+  }
+  
+  try {
+    const paid = await (await fetch(`${API_BASE}/fees/history/${currentStudentId}`)).json();
+    const filtered = paid.filter(p => p.date.startsWith(selectedMonth));
+    renderHistoryContent(filtered);
+  } catch (err) {
+    console.error('Failed to filter history:', err);
+  }
+});
+
+// =====================
 // Init
 // =====================
 document.addEventListener('DOMContentLoaded', async () => {
+  // Try to load students from localStorage first for faster loading
+  const storedStudents = localStorage.getItem('allStudents');
+  if (storedStudents) {
+    allStudents = JSON.parse(storedStudents);
+    setupNameAutocomplete();
+  }
+  
   await fetchStudents();
   setupNameAutocomplete();
   fetchAllFees();
