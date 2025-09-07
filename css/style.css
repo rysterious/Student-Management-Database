@@ -1,3 +1,4 @@
+
 @font-face {
     font-family: 'Poppins';
     src: url('../fonts/Poppins-SemiBold.ttf') format('truetype');
@@ -56,4 +57,18 @@ body {
 .student-selected {
     outline: 2px solid rgba(59,130,246,0.6); /* blue-500 */
     background-color: #1f2937 !important; /* slightly lighter */
+}
+
+/* Search highlight styles */
+mark {
+    background-color: #f59e0b;
+    color: #000;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+/* Search input focus styles */
+#searchInput:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
 }
