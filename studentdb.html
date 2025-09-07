@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="./fonts/fa/css/all.min.css">
     <link rel="stylesheet" href="./css/style.css">
+
 </head>
 
 <body class="min-h-screen bg-gray-900">
@@ -21,6 +22,63 @@
                     class="bg-gray-700 text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64">
                 <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
             </div>
+            
+            <!-- Filter Button -->
+            <div class="relative">
+                <button id="filterBtn" class="bg-gray-700 hover:bg-gray-600 text-white rounded-lg px-4 py-2 flex items-center">
+                    <i class="fas fa-filter mr-2"></i> Filter
+                </button>
+                
+                <!-- Filter Dropdown -->
+                <div id="filterDropdown" class="absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-lg z-10 hidden">
+                    <div class="p-4 space-y-4">
+                        <!-- Course Filter -->
+                        <div>
+                            <label class="block text-gray-300 font-medium mb-1">Course</label>
+                            <select id="filterCourse" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2">
+                                <option value="">All Courses</option>
+                                <!-- Add more courses here by duplicating the option line below -->
+                                <option value="science">Science</option>
+                                <option value="commerce">Commerce</option>
+                                <option value="arts">Arts</option>
+                                <option value="it">Information Technology</option>
+                                <!-- Add more courses above this line -->
+                            </select>
+                        </div>
+                        
+                        <!-- Gender Filter -->
+                        <div>
+                            <label class="block text-gray-300 font-medium mb-1">Gender</label>
+                            <select id="filterGender" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2">
+                                <option value="">All Genders</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Session Filter -->
+                        <div>
+                            <label class="block text-gray-300 font-medium mb-1">Session</label>
+                            <select id="filterSession" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2">
+                                <option value="">All Sessions</option>
+                                <!-- Sessions will be populated dynamically -->
+                            </select>
+                        </div>
+                        
+                        <!-- Filter Actions -->
+                        <div class="flex justify-between pt-2">
+                            <button id="applyFilters" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm">
+                                Apply
+                            </button>
+                            <button id="clearFilters" class="px-3 py-1 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Add Student Button -->
             <button id="addStudentBtn"
                 class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center">
@@ -37,8 +95,8 @@
                 <div class="col-span-1"></div>
                 <div class="col-span-4">Name</div>
                 <div class="col-span-3">Course</div>
-                <div class="col-span-2">Phone</div>
-                <div class="col-span-2">Email</div>
+                <div class="col-span-2">Student ID</div>
+                <div class="col-span-2">Session</div>
             </div>
             <div id="studentsContainer" class="divide-y divide-gray-700">
                 <!-- Students will be loaded here dynamically -->
@@ -92,7 +150,7 @@
                 </div>
                 <form id="editForm" class="space-y-4">
                     <input type="hidden" id="editId" name="id">
-                    
+
                     <!-- Student ID -->
                     <div>
                         <label class="block text-gray-300 font-medium mb-1">Student ID</label>
@@ -135,20 +193,20 @@
                         </div>
                     </div>
 
-                    <!-- Emergency -->                    
+                    <!-- Emergency -->
                     <div>
                         <label class="block text-gray-300 font-medium mb-1">Emergency Contact</label>
                         <input type="tel" id="editEmergencyContact" name="emergency_contact"
                             class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
                     </div>
-                    
+
                     <!-- D.O.B -->
                     <div>
                         <label class="block text-gray-300 font-medium mb-1">Date of Birth</label>
                         <input type="date" id="editDob" name="dob" required
                             class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
                     </div>
-                   
+
                     <!-- Addr -->
                     <div>
                         <label class="block text-gray-300 font-medium mb-1">Address</label>
@@ -174,11 +232,20 @@
                         <select id="editCourse" name="course" required
                             class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
                             <option value="">Select a course</option>
+                            <!-- Add more courses here by duplicating the option line below -->
                             <option value="science">Science</option>
                             <option value="commerce">Commerce</option>
                             <option value="arts">Arts</option>
                             <option value="it">Information Technology</option>
+                            <!-- Add more courses above this line -->
                         </select>
+                    </div>
+
+                    <!-- Session -->
+                    <div>
+                        <label class="block text-gray-300 font-medium mb-1">Session</label>
+                        <input type="text" id="editSession" name="session" placeholder="Enter session (e.g., 2023-2024)"
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-400">
                     </div>
 
                     <div class="flex justify-end space-x-3 pt-4">
@@ -217,11 +284,16 @@
                     <!-- Profile Picture -->
                     <div class="flex flex-col items-center">
                         <label class="block text-gray-300 font-medium mb-3">Profile Picture</label>
-                        <div class="photo-upload relative w-32 h-40 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center bg-gray-700 hover:bg-gray-600 transition cursor-pointer overflow-hidden">
+                        <div
+                            class="photo-upload relative w-32 h-40 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center bg-gray-700 hover:bg-gray-600 transition cursor-pointer overflow-hidden">
                             <input type="file" accept="image/*" id="addProfilePic" onchange="previewAddImage(event)">
-                            <label for="addProfilePic" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hover:text-white" id="addUploadLabel">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h2l2-3h10l2 3h2v13H3V7z" />
+                            <label for="addProfilePic"
+                                class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hover:text-white"
+                                id="addUploadLabel">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-1" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 7h2l2-3h10l2 3h2v13H3V7z" />
                                     <circle cx="12" cy="13" r="3" stroke="currentColor" stroke-width="2" fill="none" />
                                 </svg>
                                 <span class="text-sm">Upload</span>
@@ -304,11 +376,20 @@
                         <select name="course" required
                             class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-400">
                             <option value="">Select a course</option>
+                            <!-- Add more courses here by duplicating the option line below -->
                             <option value="science">Science</option>
                             <option value="commerce">Commerce</option>
                             <option value="arts">Arts</option>
                             <option value="it">Information Technology</option>
+                            <!-- Add more courses above this line -->
                         </select>
+                    </div>
+
+                    <!-- Session -->
+                    <div>
+                        <label class="block text-gray-300 font-medium mb-1">Session</label>
+                        <input type="text" name="session" placeholder="Enter session (e.g., 2023-2024)"
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-400">
                     </div>
 
                     <div class="flex justify-end space-x-3 pt-4">
