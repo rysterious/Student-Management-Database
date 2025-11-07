@@ -1,7 +1,8 @@
-// === Complete JavaScript Code for Fees Management ===
+// === Complete JavaScript Code for Fees Management (FULLY FIXED + EDIT MODAL SUPPORT) ===
 
 const API_BASE = 'http://localhost:5000';
 
+// Main UI Elements
 const feesContainer = document.getElementById('feesContainer');
 const statusFilter = document.getElementById('statusFilter');
 const feesSearch = document.getElementById('feesSearch');
@@ -13,12 +14,19 @@ const historyModal = document.getElementById('historyModal');
 const closeHistory = document.getElementById('closeHistory');
 const historyContent = document.getElementById('historyContent');
 const suggestionBox = document.getElementById('suggestionBox');
-const historyDate = document.getElementById('historyDate'); // Add this line
+const historyDate = document.getElementById('historyDate');
+
+// Edit Modal Elements (NEW)
+const editHistoryModal = document.getElementById('editHistoryModal');
+const editHistoryForm = document.getElementById('editHistoryForm');
+const cancelEditHistory = document.getElementById('cancelEditHistory');
+const closeEditHistory = document.getElementById('closeEditHistory');
 
 let allFees = [];
 let allStudents = [];
 let suggestionIndex = -1;
 let currentStudentId = '';
+let autocompleteInitialized = false;
 
 // =====================
 // Fetch + Render
@@ -27,25 +35,23 @@ async function fetchAllFees() {
   try {
     const res = await fetch(`${API_BASE}/fees/all`);
     allFees = await res.json();
-    
-    // For each student, get their payment history to find the most recent amount
+
     for (let fee of allFees) {
       if (fee.student_id) {
         try {
           const historyRes = await fetch(`${API_BASE}/fees/history/${fee.student_id}`);
           const history = await historyRes.json();
-          
+
           if (history.length > 0) {
-            // Sort by date to get the most recent payment
             history.sort((a, b) => new Date(b.date) - new Date(a.date));
-            fee.amount = history[0].amount; // Set to most recent payment amount
+            fee.amount = history[0].amount;
           }
         } catch (err) {
           console.error(`Failed to load history for student ${fee.student_id}:`, err);
         }
       }
     }
-    
+
     renderFees(allFees);
   } catch (err) {
     console.error('Failed to load fees:', err);
@@ -56,11 +62,9 @@ async function fetchStudents() {
   try {
     const res = await fetch(`${API_BASE}/students`);
     allStudents = await res.json();
-    // Store in localStorage for persistence
     localStorage.setItem('allStudents', JSON.stringify(allStudents));
   } catch (err) {
     console.error('Failed to load students:', err);
-    // Try to get from localStorage if API fails
     const storedStudents = localStorage.getItem('allStudents');
     if (storedStudents) {
       allStudents = JSON.parse(storedStudents);
@@ -91,61 +95,30 @@ function renderFees(fees) {
 }
 
 // =====================
-// Fee actions
+// Fee Actions
 // =====================
 async function markPaid(student_id, amount) {
   try {
-    // Get student's payment history
     const paidRes = await fetch(`${API_BASE}/fees/paid`);
     const paidFees = await paidRes.json();
     const studentHistory = paidFees.filter(f => f.student_id === student_id);
-    
-    // If no history, open add fee modal with student name pre-filled
+
     if (studentHistory.length === 0) {
-      addFeeModal.classList.remove('hidden');
-      const studentIdInput = addFeeForm.querySelector('input[name="student_id"]');
-      if (studentIdInput) {
-        const student = allStudents.find(s => s.student_id === student_id);
-        if (student) {
-          studentIdInput.value = `${student.name}: ${student.student_id}`;
-        }
-      }
-      const statusSelect = addFeeForm.querySelector('select[name="status"]');
-      if (statusSelect) {
-        statusSelect.value = "paid";
-      }
-      const amountInput = addFeeForm.querySelector('input[name="amount"]');
-      if (amountInput) {
-        amountInput.value = amount;
-      }
-      
-      // Set today's date in the date field
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const today = `${year}-${month}-${day}`;
-      
-      const dateInput = addFeeForm.querySelector('input[name="date"]');
-      if (dateInput) {
-        dateInput.value = today;
-      }
-      
+      openAddFeeModalForStudent(student_id, amount, "paid");
       return;
     }
-    
-    // If they have history, proceed with marking as paid (creates new payment)
+
     const response = await fetch(`${API_BASE}/fees/pay`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ student_id, amount })
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to mark as paid');
     }
-    
+
     alert('Fee marked as paid successfully!');
     fetchAllFees();
   } catch (err) {
@@ -154,25 +127,39 @@ async function markPaid(student_id, amount) {
   }
 }
 
+function openAddFeeModalForStudent(student_id, amount = '', status = 'paid') {
+  addFeeModal.classList.remove('hidden');
+
+  const studentIdInput = addFeeForm.querySelector('input[name="student_id"]');
+  const statusSelect = addFeeForm.querySelector('select[name="status"]');
+  const amountInput = addFeeForm.querySelector('input[name="amount"]');
+  const dateInput = addFeeForm.querySelector('input[name="date"]');
+
+  if (studentIdInput) {
+    const student = allStudents.find(s => s.student_id === student_id);
+    if (student) {
+      studentIdInput.value = `${student.name}: ${student.student_id}`;
+    }
+  }
+
+  if (statusSelect) statusSelect.value = status;
+  if (amountInput) amountInput.value = amount;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const today = `${year}-${month}-${day}`;
+  if (dateInput) dateInput.value = today;
+}
+
 async function viewHistory(student_id) {
   currentStudentId = student_id;
   try {
     const paid = await (await fetch(`${API_BASE}/fees/history/${student_id}`)).json();
-    
+
     if (paid.length === 0) {
-      // Open add fee modal if no history
-      addFeeModal.classList.remove('hidden');
-      const studentIdInput = addFeeForm.querySelector('input[name="student_id"]');
-      if (studentIdInput) {
-        const student = allStudents.find(s => s.student_id === student_id);
-        if (student) {
-          studentIdInput.value = `${student.name}: ${student.student_id}`;
-        }
-      }
-      const statusSelect = addFeeForm.querySelector('select[name="status"]');
-      if (statusSelect) {
-        statusSelect.value = "paid";
-      }
+      openAddFeeModalForStudent(student_id, '', 'paid');
       return;
     }
 
@@ -186,15 +173,14 @@ async function viewHistory(student_id) {
 
 function renderHistoryContent(filtered) {
   historyContent.innerHTML = '';
-  
+
   if (filtered.length === 0) {
     historyContent.innerHTML = '<p class="text-gray-400">No payment history found.</p>';
     return;
   }
 
-  // Sort by date (newest first)
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-  
+
   filtered.forEach((f, index) => {
     const historyItem = document.createElement('div');
     historyItem.className = "bg-gray-700 p-3 rounded relative";
@@ -214,53 +200,34 @@ function renderHistoryContent(filtered) {
   });
 }
 
-async function editPayment(payment_id, amount, date) {
-  try {
-    const response = await fetch(`${API_BASE}/fees/update/${payment_id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: parseFloat(amount),
-        date: date
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to update payment');
-    }
-    
-    alert('Payment updated successfully!');
-    // Refresh history
-    viewHistory(currentStudentId);
-    // Refresh fees list
-    fetchAllFees();
-  } catch (err) {
-    console.error('Failed to update payment:', err);
-    alert('Failed to update payment: ' + err.message);
-  }
+// ===== EDIT PAYMENT LOGIC =====
+function editPayment(payment_id, amount, date) {
+  const form = editHistoryForm;
+  form.querySelector('input[name="payment_id"]').value = payment_id;
+  form.querySelector('input[name="amount"]').value = amount;
+  form.querySelector('input[name="date"]').value = date;
+
+  editHistoryModal.classList.remove('hidden');
 }
 
 async function deletePayment(payment_id) {
   if (!confirm('Are you sure you want to delete this payment?')) {
     return;
   }
-  
+
   try {
     const response = await fetch(`${API_BASE}/fees/delete/${payment_id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' }
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to delete payment');
     }
-    
+
     alert('Payment deleted successfully!');
-    // Refresh history
     viewHistory(currentStudentId);
-    // Refresh fees list
     fetchAllFees();
   } catch (err) {
     console.error('Failed to delete payment:', err);
@@ -280,8 +247,8 @@ statusFilter.addEventListener('change', () => {
 
 feesSearch.addEventListener('input', e => {
   const term = e.target.value.toLowerCase();
-  const filtered = allFees.filter(f => 
-    f.name.toLowerCase().includes(term) || 
+  const filtered = allFees.filter(f =>
+    f.name.toLowerCase().includes(term) ||
     (f.student_id && f.student_id.toLowerCase().includes(term))
   );
   renderFees(filtered);
@@ -291,13 +258,12 @@ feesSearch.addEventListener('input', e => {
 // Add Fee Modal
 // =====================
 addFeeBtn?.addEventListener('click', () => {
-  // Set today's date correctly using browser's local time
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   const today = `${year}-${month}-${day}`;
-  
+
   const dateInput = addFeeForm.querySelector('input[name="date"]');
   if (dateInput) dateInput.value = today;
 
@@ -309,40 +275,56 @@ addFeeBtn?.addEventListener('click', () => {
 
 cancelAddFee?.addEventListener('click', () => {
   addFeeModal.classList.add('hidden');
-  suggestionBox.classList.add('hidden');
-  // Clear the form when closing
-  addFeeForm.reset();
+  clearAddFeeForm();
 });
+
+function clearAddFeeForm() {
+  const form = addFeeForm;
+  const studentIdInput = form.querySelector('input[name="student_id"]');
+  const amountInput = form.querySelector('input[name="amount"]');
+  const dateInput = form.querySelector('input[name="date"]');
+  const statusSelect = form.querySelector('select[name="status"]');
+
+  if (studentIdInput) studentIdInput.value = '';
+  if (amountInput) amountInput.value = '';
+  if (dateInput) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    dateInput.value = `${year}-${month}-${day}`;
+  }
+  if (statusSelect) statusSelect.value = 'paid';
+
+  suggestionBox.classList.add('hidden');
+}
 
 addFeeForm?.addEventListener('submit', async e => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(addFeeForm).entries());
   if (data.status !== 'paid') delete data.date;
-  
-  // Extract student_id from the input (format: name: student_id)
+
   const inputValue = data.student_id;
   const colonIndex = inputValue.lastIndexOf(':');
-  let student_id, student_name;
-  
+  let student_id;
+
   if (colonIndex !== -1) {
-    student_name = inputValue.substring(0, colonIndex).trim();
     student_id = inputValue.substring(colonIndex + 1).trim();
     data.student_id = student_id;
   }
-  
+
   try {
     const response = await fetch(`${API_BASE}/fees/add`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to add fee');
     }
-    
-    // Update the UI immediately with the new amount
+
     if (student_id && data.amount) {
       const feeIndex = allFees.findIndex(f => f.student_id === student_id);
       if (feeIndex !== -1) {
@@ -351,9 +333,9 @@ addFeeForm?.addEventListener('submit', async e => {
         renderFees(allFees);
       }
     }
-    
+
     addFeeModal.classList.add('hidden');
-    addFeeForm.reset();
+    clearAddFeeForm();
     alert('Fee added successfully!');
   } catch (err) {
     console.error('Failed to add fee:', err);
@@ -362,7 +344,53 @@ addFeeForm?.addEventListener('submit', async e => {
 });
 
 // =====================
-// History Modal
+// Edit History Modal
+// =====================
+editHistoryForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const formData = new FormData(editHistoryForm);
+  const payment_id = formData.get('payment_id');
+  const amount = parseFloat(formData.get('amount'));
+  const date = formData.get('date');
+
+  try {
+    const response = await fetch(`${API_BASE}/fees/update/${payment_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, date })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to update payment');
+    }
+
+    alert('Payment updated successfully!');
+    editHistoryModal.classList.add('hidden');
+    viewHistory(currentStudentId);
+    fetchAllFees();
+  } catch (err) {
+    console.error('Failed to update payment:', err);
+    alert('Failed to update payment: ' + err.message);
+  }
+});
+
+cancelEditHistory?.addEventListener('click', () => {
+  editHistoryModal.classList.add('hidden');
+});
+
+closeEditHistory?.addEventListener('click', () => {
+  editHistoryModal.classList.add('hidden');
+});
+
+editHistoryModal?.addEventListener('click', e => {
+  if (e.target === editHistoryModal) {
+    editHistoryModal.classList.add('hidden');
+  }
+});
+
+// =====================
+// History & Other Modals
 // =====================
 closeHistory?.addEventListener('click', () => historyModal.classList.add('hidden'));
 
@@ -376,27 +404,47 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     addFeeModal.classList.add('hidden');
     historyModal.classList.add('hidden');
+    editHistoryModal.classList.add('hidden');
     suggestionBox.classList.add('hidden');
   }
 });
 
 // =====================
-// Search Autofocus (letters only)
+// 🔥 FIXED: Global Keypress (won't steal focus from inputs/modals)
 // =====================
 document.addEventListener('keypress', e => {
-  if (document.activeElement === feesSearch) return;
+  const activeEl = document.activeElement;
+
+  if (
+    activeEl.tagName === 'INPUT' ||
+    activeEl.tagName === 'TEXTAREA' ||
+    activeEl.tagName === 'SELECT'
+  ) {
+    return;
+  }
+
+  if (
+    !addFeeModal.classList.contains('hidden') ||
+    !historyModal.classList.contains('hidden') ||
+    !editHistoryModal.classList.contains('hidden')
+  ) {
+    return;
+  }
+
   if (e.key.length === 1 && /\w/.test(e.key)) {
     feesSearch.focus();
     feesSearch.value += e.key;
-    const event = new Event('input', { bubbles: true });
-    feesSearch.dispatchEvent(event);
+    feesSearch.dispatchEvent(new Event('input', { bubbles: true }));
   }
 });
 
 // =====================
-// Autocomplete for student name:ID
+// Autocomplete
 // =====================
 function setupNameAutocomplete() {
+  if (autocompleteInitialized) return;
+  autocompleteInitialized = true;
+
   const studentIdInput = addFeeForm.querySelector('input[name="student_id"]');
   if (!studentIdInput) return;
 
@@ -410,11 +458,11 @@ function setupNameAutocomplete() {
       return;
     }
 
-    const matches = allStudents.filter(s => 
-      s.name.toLowerCase().includes(query) || 
+    const matches = allStudents.filter(s =>
+      s.name.toLowerCase().includes(query) ||
       (s.student_id && s.student_id.toLowerCase().includes(query))
     );
-    
+
     if (matches.length === 0) {
       suggestionBox.classList.add('hidden');
       return;
@@ -470,7 +518,7 @@ function setupNameAutocomplete() {
 }
 
 // =====================
-// Date filtering for history
+// History Date Filter
 // =====================
 historyDate?.addEventListener('change', async () => {
   const selectedMonth = historyDate.value;
@@ -478,7 +526,7 @@ historyDate?.addEventListener('change', async () => {
     viewHistory(currentStudentId);
     return;
   }
-  
+
   try {
     const paid = await (await fetch(`${API_BASE}/fees/history/${currentStudentId}`)).json();
     const filtered = paid.filter(p => p.date.startsWith(selectedMonth));
@@ -492,27 +540,24 @@ historyDate?.addEventListener('change', async () => {
 // Init
 // =====================
 document.addEventListener('DOMContentLoaded', async () => {
-  // Try to load students from localStorage first for faster loading
   const storedStudents = localStorage.getItem('allStudents');
   if (storedStudents) {
     allStudents = JSON.parse(storedStudents);
-    setupNameAutocomplete();
   }
-  
+
   await fetchStudents();
   setupNameAutocomplete();
   fetchAllFees();
-  
-  // Check for overdue fees every day
+
   setInterval(async () => {
     try {
       await fetch(`${API_BASE}/fees/check_overdue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      fetchAllFees(); // Refresh the list
+      fetchAllFees();
     } catch (err) {
       console.error('Failed to check overdue fees:', err);
     }
-  }, 24 * 60 * 60 * 1000); // Check once per day
+  }, 24 * 60 * 60 * 1000);
 });
